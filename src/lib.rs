@@ -12,12 +12,15 @@ use screeps::{
 };
 use wasm_bindgen::prelude::*;
 
-mod logging;
-mod overlord;
 mod colony;
-mod memory;
-mod hive;
+mod constants;
+mod creep_setup;
 mod error;
+mod hive;
+mod logging;
+mod memory;
+mod overlord;
+mod util;
 
 // add wasm_bindgen to any function you would like to expose for call from js
 #[wasm_bindgen]

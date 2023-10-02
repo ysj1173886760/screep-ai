@@ -1,21 +1,19 @@
-use screeps::{
-    objects::{Creep}, ErrorCode,
-};
+use screeps::{objects::Creep, ErrorCode};
 
+use crate::{colony::Colony, error::SwarmError};
 use std::sync::Arc;
 use Creep as Zerg;
-use crate::{colony::Colony, error::SwarmError};
 
 mod mine;
 
 enum OverlordType {
-  Mine
+    Mine,
 }
 
 trait Overlord {
-  fn run() -> Result<(), SwarmError>;
+    fn run() -> Result<(), SwarmError>;
 
-  // name of overlord must be globally unique.
-  // [room_name]:[pos]:[overlord_name]
-  fn get_name() -> String;
+    // name of overlord must be globally unique.
+    // [room_name]:[pos]:[overlord_name]
+    fn get_name() -> String;
 }
