@@ -13,17 +13,16 @@ use screeps::{
 use wasm_bindgen::prelude::*;
 
 mod logging;
+mod overlord;
+mod colony;
+mod memory;
+mod hive;
+mod error;
 
 // add wasm_bindgen to any function you would like to expose for call from js
 #[wasm_bindgen]
 pub fn setup() {
     logging::setup_logging(logging::Info);
-}
-
-// this is one way to persist data between ticks within Rust's memory, as opposed to
-// keeping state in memory on game objects - but will be lost on global resets!
-thread_local! {
-    static CREEP_TARGETS: RefCell<HashMap<String, CreepTarget>> = RefCell::new(HashMap::new());
 }
 
 // this enum will represent a creep's lock on a specific target object, storing a js reference
@@ -41,13 +40,13 @@ pub fn game_loop() {
     debug!("loop starting! CPU: {}", game::cpu::get_used());
     // mutably borrow the creep_targets refcell, which is holding our creep target locks
     // in the wasm heap
-    CREEP_TARGETS.with(|creep_targets_refcell| {
-        let mut creep_targets = creep_targets_refcell.borrow_mut();
-        debug!("running creeps");
-        for creep in game::creeps().values() {
-            run_creep(&creep, &mut creep_targets);
-        }
-    });
+    // CREEP_TARGETS.with(|creep_targets_refcell| {
+    //     let mut creep_targets = creep_targets_refcell.borrow_mut();
+    //     debug!("running creeps");
+    //     for creep in game::creeps().values() {
+    //         run_creep(&creep, &mut creep_targets);
+    //     }
+    // });
 
     debug!("running spawns");
     let mut additional = 0;
@@ -69,7 +68,7 @@ pub fn game_loop() {
         }
     }
 
-    info!("done! cpu: {}", game::cpu::get_used())
+    debug!("done! cpu: {}", game::cpu::get_used())
 }
 
 fn run_creep(creep: &Creep, creep_targets: &mut HashMap<String, CreepTarget>) {
