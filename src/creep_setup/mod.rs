@@ -4,8 +4,8 @@ pub mod creep_setup_templates;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CreepSetup {
-    role: String,
-    pattern: Vec<Part>,
+    pub role: String,
+    pub pattern: Vec<Part>,
 }
 
 impl CreepSetup {

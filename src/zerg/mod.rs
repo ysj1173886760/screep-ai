@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreepMemory {
     pub overlord: String,
-    pub colony: String,
+    pub role: String,
+    // pub colony: String,
 }
 
 impl CreepMemory {
