@@ -1,7 +1,9 @@
 use std::{cell::RefCell, collections::HashMap};
 
+use wasm_bindgen::JsValue;
+
 // this is one way to persist data between ticks within Rust's memory, as opposed to
 // keeping state in memory on game objects - but will be lost on global resets!
 thread_local! {
-  // static CREEP_TARGETS: RefCell<HashMap<String, CreepTarget>> = RefCell::new(HashMap::new());
+  static COLONY_CACHES: RefCell<HashMap<String, JsValue>> = RefCell::new(HashMap::new());
 }

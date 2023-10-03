@@ -4,16 +4,16 @@ use crate::{colony::Colony, error::SwarmError};
 use std::sync::Arc;
 use Creep as Zerg;
 
-mod mine;
+pub mod mine;
 
-enum OverlordType {
+pub enum OverlordType {
     Mine,
 }
 
-trait Overlord {
-    fn run() -> Result<(), SwarmError>;
+pub trait Overlord {
+    fn run(&self) -> Result<(), SwarmError>;
 
     // name of overlord must be globally unique.
     // [room_name]:[pos]:[overlord_name]
-    fn get_name() -> String;
+    fn get_name(&self) -> String;
 }
