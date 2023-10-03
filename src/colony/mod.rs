@@ -3,14 +3,14 @@ use std::collections::{BinaryHeap, HashMap};
 use std::{cell::RefCell, rc::Rc};
 
 use log::*;
-use screeps::{game, ErrorCode, FindConstant, Room, RoomName};
+use screeps::{game, ErrorCode, FindConstant, HasTypedId, Room, RoomName};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
 
 use crate::creep_setup::CreepSetup;
 use crate::error::SwarmError;
 use crate::hive::{self, Hive};
-use crate::overlord::mine::MineOverlordCache;
+use crate::overlord::mine::MineOverlord;
 use crate::overlord::{Overlord, OverlordType};
 
 // according to https://docs.screeps.com/control.html
@@ -32,7 +32,7 @@ pub struct Colony {
 
 #[derive(Serialize, Deserialize)]
 struct ColonyCache {
-    mine_overlord_cache: Option<Vec<MineOverlordCache>>,
+    mine_overlord_cache: Option<Vec<String>>,
 }
 
 impl Colony {
@@ -81,7 +81,7 @@ impl Colony {
             None
         };
 
-        let overlords = Self::initialize_overlords(&room, &colony_cache)?;
+        let overlords = Self::initialize_overlords(hive.clone(), &colony_cache)?;
 
         let colony = Colony {
             rcl: rcl,
@@ -113,9 +113,61 @@ impl Colony {
     }
 
     fn initialize_overlords(
-        room: &Room,
+        hive: Rc<RefCell<Hive>>,
         cache: &Option<ColonyCache>,
     ) -> Result<HashMap<String, Box<dyn Overlord>>, SwarmError> {
-        todo!()
+        // initialize mine overlord
+        let mut overlord_map: HashMap<String, Box<dyn Overlord>> = HashMap::new();
+        if cache.is_some() && cache.as_ref().unwrap().mine_overlord_cache.is_some() {
+            Self::initialize_mine_overlord_by_cache(
+                &mut overlord_map,
+                hive,
+                cache
+                    .as_ref()
+                    .unwrap()
+                    .mine_overlord_cache
+                    .as_ref()
+                    .unwrap(),
+            )?;
+        } else {
+            Self::initialize_mine_overlord(&mut overlord_map, hive)?;
+        }
+
+        Ok(overlord_map)
+    }
+
+    fn initialize_mine_overlord_by_cache(
+        overlord_map: &mut HashMap<String, Box<dyn Overlord>>,
+        hive: Rc<RefCell<Hive>>,
+        cache: &Vec<String>,
+    ) -> Result<(), SwarmError> {
+        for overlord_cache in cache {
+            let overlord = MineOverlord::new_from_cache(overlord_cache, hive.clone())?;
+            let old_value = overlord_map.insert(overlord.get_name(), overlord);
+            if old_value.is_some() {
+                warn!("overlord has dup name: {}", old_value.unwrap().get_name())
+            }
+        }
+        Ok(())
+    }
+
+    fn initialize_mine_overlord(
+        overlord_map: &mut HashMap<String, Box<dyn Overlord>>,
+        hive: Rc<RefCell<Hive>>,
+    ) -> Result<(), SwarmError> {
+        let sources = hive
+            .as_ref()
+            .borrow()
+            .hatcherys
+            .room
+            .find(screeps::find::SOURCES_ACTIVE, None);
+        for source in sources {
+            let overlord = MineOverlord::new(source.id(), hive.clone())?;
+            let old_value = overlord_map.insert(overlord.get_name(), overlord);
+            if old_value.is_some() {
+                warn!("overlord has dup name: {}", old_value.unwrap().get_name())
+            }
+        }
+        Ok(())
     }
 }

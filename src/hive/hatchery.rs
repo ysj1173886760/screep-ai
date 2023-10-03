@@ -10,7 +10,7 @@ use screeps::{
 pub struct Hatchery {
     spawns: Vec<StructureSpawn>,
     spawn_queue: BinaryHeap<SpawnRequests>,
-    room: Room,
+    pub room: Room,
 }
 
 #[derive(Debug, Eq, PartialEq)]

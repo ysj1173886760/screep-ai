@@ -11,7 +11,7 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{error::SwarmError, util::cast_room_object_into};
 
 pub struct Hive {
-    hatcherys: Hatchery,
+    pub hatcherys: Hatchery,
 }
 
 impl Hive {

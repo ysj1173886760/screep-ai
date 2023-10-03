@@ -2,7 +2,6 @@ use screeps::{objects::Creep, ErrorCode};
 
 use crate::{colony::Colony, error::SwarmError};
 use std::sync::Arc;
-use Creep as Zerg;
 
 pub mod mine;
 

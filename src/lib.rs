@@ -21,6 +21,7 @@ mod logging;
 mod memory;
 mod overlord;
 mod util;
+mod zerg;
 
 // add wasm_bindgen to any function you would like to expose for call from js
 #[wasm_bindgen]
