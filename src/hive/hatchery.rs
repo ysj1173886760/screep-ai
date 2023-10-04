@@ -6,7 +6,7 @@ use crate::{
 use log::{debug, warn};
 use screeps::{
     find::{Find, RoomObject},
-    HasTypedId, Room, SpawnOptions, StructureSpawn,
+    HasTypedId, Room, SpawnOptions, StructureSpawn, game,
 };
 use web_sys::console::warn;
 
@@ -104,10 +104,11 @@ impl Hatchery {
 
         let body_pattern = &spawn_request.setup.pattern;
         let name = format!(
-            "{}-{}-{}",
+            "{}-{}-{}-{}",
             room.name().to_string(),
             spawn_request.setup.role,
-            spawn.id().to_u128()
+            spawn.id().to_u128(),
+            game::time()
         );
         let memory = CreepMemory {
             overlord: spawn_request.overlord.clone(),

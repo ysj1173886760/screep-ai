@@ -2,7 +2,8 @@
 let wasm_module;
 
 // replace this with the name of your module
-const MODULE_NAME = "screeps-starter-rust";
+const MODULE_NAME = "swarm";
+const version = 3;
 
 function console_error(...args) {
     console.log(...args);

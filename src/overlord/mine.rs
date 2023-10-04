@@ -1,4 +1,4 @@
-use log::{error, warn};
+use log::{error, warn, debug};
 use screeps::{
     find, game, ConstructionSite, Creep, ErrorCode, HasPosition, HasTypedId, MoveToOptions,
     ObjectId, PolyStyle, Position, ResourceType, Room, SharedCreepProperties, Source,
@@ -41,16 +41,16 @@ impl MineOverlord {
         Self::new_internal(source_id, hive)
     }
 
-    pub fn new_from_cache(
-        cache: &String,
-        hive: Rc<RefCell<Hive>>,
-    ) -> Result<Box<Self>, SwarmError> {
-        let overlord_cache = serde_json::from_str::<MineOverlordCache>(cache).map_err(|e| {
-            warn!("Parse overlord cache failed");
-            SwarmError::InternalAssertionFailed("Parse overlord cache failed".to_string())
-        })?;
-        Self::new_internal(overlord_cache.source_id, hive)
-    }
+    // pub fn new_from_cache(
+    //     cache: &String,
+    //     hive: Rc<RefCell<Hive>>,
+    // ) -> Result<Box<Self>, SwarmError> {
+    //     let overlord_cache = serde_json::from_str::<MineOverlordCache>(cache).map_err(|e| {
+    //         warn!("Parse overlord cache failed");
+    //         SwarmError::InternalAssertionFailed("Parse overlord cache failed".to_string())
+    //     })?;
+    //     Self::new_internal(overlord_cache.source_id, hive)
+    // }
 
     fn new_internal(
         source_id: ObjectId<Source>,
@@ -61,6 +61,8 @@ impl MineOverlord {
         let source = game::get_object_by_id_typed(&source_id).ok_or(
             SwarmError::InternalAssertionFailed("get source failed".to_string()),
         )?;
+
+        debug!("initialize mine overlord done. source id: {}", source_id.to_u128());
 
         Ok(Box::new(MineOverlord {
             overlord_type: OverlordType::Mine,
@@ -99,11 +101,15 @@ impl MineOverlord {
     }
 
     fn run_miner(&self, creep: &Creep) -> Result<(), SwarmError> {
+      if creep.spawning() {
+        return Ok(())
+      }
+
         let mut memory = CreepMemory::from_value(creep.memory());
         if memory.state.is_none() {
             memory.state = Some(MINER_TRANSFERING.to_string());
         }
-        if creep.store().get_free_capacity(None) > 0
+        if creep.store().get_used_capacity(None) == 0
             && memory.state.as_ref().unwrap() == MINER_TRANSFERING
         {
             memory.state = Some(MINER_MINING.to_string())
@@ -122,6 +128,8 @@ impl MineOverlord {
             error!("invalid miner state {}", memory.state.as_ref().unwrap());
         }
 
+        creep.set_memory(&memory.into_value());
+
         Ok(())
     }
 
@@ -129,17 +137,20 @@ impl MineOverlord {
         // try upgrade controller if it's going to downgrade
         let controller = self.room.controller();
         if controller.is_some() && controller.as_ref().unwrap().ticks_to_downgrade() < 200 {
+            debug!("ticks to downgrade {} is small, upgrade first", controller.as_ref().unwrap().ticks_to_downgrade());
             Self::do_upgrade(creep, controller.as_ref().unwrap());
             return Ok(());
         }
 
         // first try fill energy
         if Self::try_fill_energy(creep, &self.room) {
+            debug!("fill energy");
             return Ok(());
         }
 
         // then try build
         if Self::try_build(creep, &self.room) {
+            debug!("build");
             return Ok(());
         }
 
@@ -147,6 +158,7 @@ impl MineOverlord {
 
         // last, try upgrade
         if controller.is_some() {
+            debug!("do upgrade");
             Self::do_upgrade(creep, controller.as_ref().unwrap());
             return Ok(());
         }
@@ -176,17 +188,16 @@ impl MineOverlord {
             .filter(|structure| {
                 match structure {
                     StructureObject::StructureExtension(s) => {
-                        return s.store().get_free_capacity(None) > 0
+                        return s.store().get_free_capacity(Some(ResourceType::Energy)) > 0
                     }
                     StructureObject::StructureSpawn(s) => {
-                        return s.store().get_free_capacity(None) > 0
+                        return s.store().get_free_capacity(Some(ResourceType::Energy)) > 0
                     }
                     StructureObject::StructureTower(s) => {
-                        return s.store().get_free_capacity(None) > 0
+                        return s.store().get_free_capacity(Some(ResourceType::Energy)) > 0
                     }
                     _ => return false,
                 }
-                unreachable!()
             })
             .next();
 
@@ -272,4 +283,9 @@ impl Overlord for MineOverlord {
     fn get_name(&self) -> String {
         Self::get_name_internal(&self.room, &self.source.id())
     }
+
+    // fn get_cache(&self) -> String {
+    //   let cache = MineOverlordCache{source_id: self.source.id()};
+    //   serde_json::to_string(&cache).unwrap()
+    // }
 }

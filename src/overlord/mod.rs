@@ -15,4 +15,6 @@ pub trait Overlord {
     // name of overlord must be globally unique.
     // [room_name]:[pos]:[overlord_name]
     fn get_name(&self) -> String;
+
+    // fn get_cache(&self) -> String;
 }

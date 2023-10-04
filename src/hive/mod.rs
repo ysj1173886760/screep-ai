@@ -20,4 +20,8 @@ impl Hive {
             hatcherys: Hatchery::new(room)?,
         })))
     }
+
+    pub fn run(&mut self) {
+      self.hatcherys.run();
+    }
 }

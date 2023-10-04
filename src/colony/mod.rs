@@ -6,6 +6,7 @@ use log::*;
 use screeps::{game, ErrorCode, FindConstant, HasTypedId, Room, RoomName};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
+use web_sys::console::warn;
 
 use crate::creep_setup::CreepSetup;
 use crate::error::SwarmError;
@@ -30,15 +31,9 @@ pub struct Colony {
     pub overlords: HashMap<String, Box<dyn Overlord>>,
 }
 
-#[derive(Serialize, Deserialize)]
-struct ColonyCache {
-    mine_overlord_cache: Option<Vec<String>>,
-}
-
 impl Colony {
-    pub fn new(
+    pub fn new_from_room_name(
         central_room_name: String,
-        cache: Option<JsValue>,
     ) -> Result<Rc<RefCell<Self>>, SwarmError> {
         let room_name: RoomName;
         match RoomName::new(&central_room_name) {
@@ -61,38 +56,61 @@ impl Colony {
             .ok_or(SwarmError::InternalAssertionFailed(
                 "get room failed".to_string(),
             ))?;
+
+        Self::new_from_room(room)
+    }
+
+    pub fn new_from_room(room: Room) -> Result<Rc<RefCell<Self>>, SwarmError> {
+      Self::new_internal(room)
+    }
+
+    fn new_internal(room: Room) -> Result<Rc<RefCell<Self>>, SwarmError> {
         let rcl = room.controller().unwrap().level();
 
         let hive = Self::initialize_hive(&room)?;
 
-        let colony_cache = if let Some(cache_value) = cache {
-            let result_cache: Result<ColonyCache, _> = serde_wasm_bindgen::from_value(cache_value);
-            if result_cache.is_err() {
-                warn!(
-                    "parse colony cache failed. {:?}",
-                    result_cache.err().unwrap()
-                );
-                return Err(SwarmError::InternalAssertionFailed(
-                    "parse colony cache failed".to_string(),
-                ));
-            }
-            Some(result_cache.unwrap())
-        } else {
-            None
-        };
+        // let colony_cache = if let Some(cache_value) = cache {
+        //     let result_cache: Result<ColonyCache, _> = serde_wasm_bindgen::from_value(cache_value);
+        //     if result_cache.is_err() {
+        //         warn!(
+        //             "parse colony cache failed. {:?}",
+        //             result_cache.err().unwrap()
+        //         );
+        //         return Err(SwarmError::InternalAssertionFailed(
+        //             "parse colony cache failed".to_string(),
+        //         ));
+        //     }
+        //     Some(result_cache.unwrap())
+        // } else {
+        //     None
+        // };
 
-        let overlords = Self::initialize_overlords(hive.clone(), &colony_cache)?;
+        let overlords = Self::initialize_overlords(hive.clone())?;
 
         let colony = Colony {
             rcl: rcl,
             stage: Colony::get_colony_stage_by_rcl(rcl),
-            central_room_name: central_room_name,
+            central_room_name: room.name().to_string(),
             room: room,
             hive: hive,
             overlords: overlords,
         };
 
+        debug!("initialize colony done {}", colony.room.name());
+
         Ok(Rc::new(RefCell::new(colony)))
+    }
+
+    pub fn run(&self) {
+      // first run overlords
+      for overlord in self.overlords.values() {
+        let overlord_run_result = overlord.run();
+        if overlord_run_result.is_err() {
+          warn!("run overlord failed: {:?}", overlord_run_result)
+        }
+      }
+      // then run hive
+      self.hive.as_ref().borrow_mut().run();
     }
 
     fn get_colony_stage_by_rcl(rcl: u8) -> ColonyStage {
@@ -114,41 +132,23 @@ impl Colony {
 
     fn initialize_overlords(
         hive: Rc<RefCell<Hive>>,
-        cache: &Option<ColonyCache>,
     ) -> Result<HashMap<String, Box<dyn Overlord>>, SwarmError> {
         // initialize mine overlord
         let mut overlord_map: HashMap<String, Box<dyn Overlord>> = HashMap::new();
-        if cache.is_some() && cache.as_ref().unwrap().mine_overlord_cache.is_some() {
-            Self::initialize_mine_overlord_by_cache(
-                &mut overlord_map,
-                hive,
-                cache
-                    .as_ref()
-                    .unwrap()
-                    .mine_overlord_cache
-                    .as_ref()
-                    .unwrap(),
-            )?;
-        } else {
-            Self::initialize_mine_overlord(&mut overlord_map, hive)?;
-        }
+        // if cache.is_some() && cache.as_ref().unwrap().mine_overlord_cache.is_some() {
+        //     Self::initialize_mine_overlord_by_cache(
+        //         &mut overlord_map,
+        //         hive,
+        //         cache
+        //             .as_ref()
+        //             .unwrap()
+        //             .mine_overlord_cache
+        //             .as_ref()
+        //             .unwrap(),
+        //     )?;
+        Self::initialize_mine_overlord(&mut overlord_map, hive)?;
 
         Ok(overlord_map)
-    }
-
-    fn initialize_mine_overlord_by_cache(
-        overlord_map: &mut HashMap<String, Box<dyn Overlord>>,
-        hive: Rc<RefCell<Hive>>,
-        cache: &Vec<String>,
-    ) -> Result<(), SwarmError> {
-        for overlord_cache in cache {
-            let overlord = MineOverlord::new_from_cache(overlord_cache, hive.clone())?;
-            let old_value = overlord_map.insert(overlord.get_name(), overlord);
-            if old_value.is_some() {
-                warn!("overlord has dup name: {}", old_value.unwrap().get_name())
-            }
-        }
-        Ok(())
     }
 
     fn initialize_mine_overlord(
