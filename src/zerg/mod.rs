@@ -10,6 +10,7 @@ pub struct CreepMemory {
     pub overlord: String,
     pub role: String,
     // pub colony: String,
+    pub state: Option<String>,
 }
 
 impl CreepMemory {

@@ -112,9 +112,9 @@ impl Hatchery {
         let memory = CreepMemory {
             overlord: spawn_request.overlord.clone(),
             role: spawn_request.setup.role.clone(),
-        }
-        .into_value();
-        let spawn_opts = SpawnOptions::new().memory(memory);
+            state: None,
+        };
+        let spawn_opts = SpawnOptions::new().memory(memory.into_value());
 
         let result = spawn.spawn_creep_with_options(&body_pattern, &name, &spawn_opts);
         if result.is_err() {
